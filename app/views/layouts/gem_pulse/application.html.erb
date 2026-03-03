@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><%= gem_pulse_config.title %></title>
+  <%= csrf_meta_tags %>
+  <%= csp_meta_tag %>
+
+  <%= yield :head %>
+
+  <%= stylesheet_link_tag "gem_pulse/application", media: "all" %>
+</head>
+<body>
+
+<header>
+  <nav>
+    <%= link_to gem_pulse_config.title, root_path %>
+    <%= link_to "Gems", gems_path %>
+  </nav>
+</header>
+
+<main>
+  <% if flash[:alert] %>
+    <div class="alert"><%= flash[:alert] %></div>
+  <% end %>
+
+  <%= yield %>
+</main>
+
+</body>
+</html>
