@@ -1,0 +1,89 @@
+<h1><%= @gem[:name] %></h1>
+
+<div class="gp-gem-header">
+  <span class="gp-badge gp-badge-<%= @gem[:status] %>"><%= @gem[:status] %></span>
+  <span class="gp-score"><%= @gem[:score] || "—" %></span>
+  <span class="gp-versions">
+    <strong><%= @gem[:locked_version] %></strong>
+    <% if @gem[:latest_version] && @gem[:latest_version] != @gem[:locked_version] %>
+      → <%= @gem[:latest_version] %>
+    <% end %>
+  </span>
+</div>
+
+<h2>Score Breakdown</h2>
+<ul class="gp-reasons">
+  <% @gem[:reasons].each do |reason| %>
+    <li><%= reason %></li>
+  <% end %>
+</ul>
+
+<% if @gem[:advisories].any? %>
+  <h2>Advisories</h2>
+  <table class="gp-table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Severity</th>
+        <th>Title</th>
+        <th>Patched Versions</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @gem[:advisories].each do |adv| %>
+        <tr>
+          <td>
+            <% id = adv[:cve] || adv[:ghsa] %>
+            <% if adv[:url] %>
+              <%= link_to id, adv[:url], target: "_blank", rel: "noopener" %>
+            <% else %>
+              <%= id %>
+            <% end %>
+          </td>
+          <td><span class="gp-badge gp-badge-<%= adv[:severity] %>"><%= adv[:severity] %></span></td>
+          <td><%= adv[:title] %></td>
+          <td><%= adv[:patched_versions].join(", ") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<% if @versions.any? %>
+  <h2>Recent Versions</h2>
+  <table class="gp-table">
+    <thead>
+      <tr>
+        <th>Version</th>
+        <th>Released</th>
+        <th>Downloads</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @versions.each do |v| %>
+        <tr>
+          <td><%= v[:number] %></td>
+          <td><%= v[:created_at] %></td>
+          <td><%= v[:downloads] ? number_with_delimiter(v[:downloads]) : "—" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>
+
+<div class="gp-links">
+  <% if @gem[:rubygems_data] %>
+    <%= link_to "RubyGems.org", "https://rubygems.org/gems/#{@gem[:name]}", target: "_blank", rel: "noopener" %>
+    <% if @gem[:rubygems_data][:homepage_uri] %>
+      · <%= link_to "Homepage", @gem[:rubygems_data][:homepage_uri], target: "_blank", rel: "noopener" %>
+    <% end %>
+    <% if @gem[:rubygems_data][:source_code_uri] %>
+      · <%= link_to "Source", @gem[:rubygems_data][:source_code_uri], target: "_blank", rel: "noopener" %>
+    <% end %>
+    <% if @gem[:rubygems_data][:bug_tracker_uri] %>
+      · <%= link_to "Issues", @gem[:rubygems_data][:bug_tracker_uri], target: "_blank", rel: "noopener" %>
+    <% end %>
+  <% end %>
+</div>
+
+<p><%= link_to "← Back to gems", gems_path %></p>

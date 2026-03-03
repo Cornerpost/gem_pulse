@@ -1,0 +1,44 @@
+<h1><%= gem_pulse_config.title %></h1>
+
+<div class="gp-summary-cards">
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @summary[:total] %></span>
+    <span class="gp-card-label">Total Gems</span>
+  </div>
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @summary[:with_cves] %></span>
+    <span class="gp-card-label">With CVEs</span>
+  </div>
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @summary[:outdated] %></span>
+    <span class="gp-card-label">Outdated</span>
+  </div>
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @summary[:aggregate_score] || "—" %></span>
+    <span class="gp-card-label">Aggregate Score</span>
+  </div>
+</div>
+
+<h2>Needs Attention</h2>
+<table class="gp-table">
+  <thead>
+    <tr>
+      <th>Gem</th>
+      <th>Locked</th>
+      <th>Latest</th>
+      <th>Status</th>
+      <th>Score</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @gems.reject { |g| g[:status] == "unknown" }.sort_by { |g| g[:score] || 0 }.first(10).each do |gem| %>
+      <tr>
+        <td><%= link_to gem[:name], gem_path(gem[:name]) %></td>
+        <td><%= gem[:locked_version] %></td>
+        <td><%= gem[:latest_version] || "—" %></td>
+        <td><span class="gp-badge gp-badge-<%= gem[:status] %>"><%= gem[:status] %></span></td>
+        <td><%= gem[:score] || "—" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

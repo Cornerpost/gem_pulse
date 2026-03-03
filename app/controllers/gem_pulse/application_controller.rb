@@ -21,5 +21,46 @@ module GemPulse
       def gem_pulse_config
         GemPulse.configuration
       end
+
+      def gemfile_root
+        # Use Bundler.root to find the directory containing Gemfile.lock.
+        # In host apps this is typically Rails.root; in the dummy test app
+        # Gemfile.lock lives at the engine root, not test/dummy/.
+        Bundler.root
+      end
+
+      def load_gem_health
+        inspector = GemInspector.new(app_root: gemfile_root)
+        scanner = AdvisoryScanner.new(app_root: gemfile_root)
+        client = RubygemsClient.new
+
+        all_advisories = scanner.advisories
+
+        inspector.gems.map do |gem_entry|
+          rubygems_data = gem_entry.source == :rubygems ? client.info(gem_entry.name) : nil
+          gem_advisories = all_advisories[gem_entry.name] || []
+
+          score = HealthScore.new(
+            gem_name: gem_entry.name,
+            locked_version: gem_entry.locked_version,
+            rubygems_data: rubygems_data,
+            advisories: gem_advisories
+          )
+
+          {
+            name: gem_entry.name,
+            locked_version: gem_entry.locked_version,
+            declared_version: gem_entry.declared_version,
+            groups: gem_entry.groups,
+            source: gem_entry.source,
+            latest_version: rubygems_data&.dig(:latest_version),
+            score: score.value,
+            status: score.status,
+            reasons: score.reasons,
+            advisories: gem_advisories,
+            rubygems_data: rubygems_data
+          }
+        end
+      end
   end
 end
