@@ -34,8 +34,8 @@
     <% @gems.reject { |g| g[:status] == "unknown" }.sort_by { |g| g[:score] || 0 }.first(10).each do |gem| %>
       <tr>
         <td><%= link_to gem[:name], gem_path(gem[:name]) %></td>
-        <td><%= gem[:locked_version] %></td>
-        <td><%= gem[:latest_version] || "—" %></td>
+        <td><code><%= gem[:locked_version] %></code></td>
+        <td><code><%= gem[:latest_version] || "—" %></code></td>
         <td><span class="gp-badge gp-badge-<%= gem[:status] %>"><%= gem[:status] %></span></td>
         <td><%= gem[:score] || "—" %></td>
       </tr>

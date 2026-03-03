@@ -8,31 +8,22 @@
   <%= link_to "Unknown", gems_path(status: "unknown"), class: "gp-filter #{'gp-filter-active' if params[:status] == 'unknown'}" %>
 </div>
 
-<%
-  def sort_link(column, label)
-    current_sort = params[:sort] == column
-    direction = current_sort && params[:direction] != "desc" ? "desc" : "asc"
-    indicator = current_sort ? (params[:direction] == "desc" ? " ▼" : " ▲") : ""
-    link_to "#{label}#{indicator}".html_safe, gems_path(sort: column, direction: direction, status: params[:status])
-  end
-%>
-
 <table class="gp-table">
   <thead>
     <tr>
-      <th><%= sort_link("name", "Gem") %></th>
-      <th><%= sort_link("locked_version", "Locked") %></th>
-      <th><%= sort_link("latest_version", "Latest") %></th>
-      <th><%= sort_link("status", "Status") %></th>
-      <th><%= sort_link("score", "Score") %></th>
+      <th><%= gp_sort_link("name", "Gem") %></th>
+      <th><%= gp_sort_link("locked_version", "Locked") %></th>
+      <th><%= gp_sort_link("latest_version", "Latest") %></th>
+      <th><%= gp_sort_link("status", "Status") %></th>
+      <th><%= gp_sort_link("score", "Score") %></th>
     </tr>
   </thead>
   <tbody>
     <% @gems.each do |gem| %>
       <tr>
         <td><%= link_to gem[:name], gem_path(gem[:name]) %></td>
-        <td><%= gem[:locked_version] %></td>
-        <td><%= gem[:latest_version] || "—" %></td>
+        <td><code><%= gem[:locked_version] %></code></td>
+        <td><code><%= gem[:latest_version] || "—" %></code></td>
         <td><span class="gp-badge gp-badge-<%= gem[:status] %>"><%= gem[:status] %></span></td>
         <td><%= gem[:score] || "—" %></td>
       </tr>
