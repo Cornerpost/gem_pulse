@@ -8,3 +8,7 @@
 /test/dummy/log/*.log
 /test/dummy/storage/
 /test/dummy/tmp/
+
+# Gems should not commit Gemfile.lock — the host app provides the lock.
+# See: https://yehudakatz.com/2010/12/16/clarifying-the-roles-of-the-gemspec-and-gemfile/
+Gemfile.lock
