@@ -1,0 +1,259 @@
+<% content_for :head do %>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+<% end %>
+
+<h1>Dependency Graph</h1>
+
+<div class="gp-graph-controls">
+  <div class="gp-graph-stats">
+    <span><strong><%= @stats[:direct] %></strong> direct</span>
+    <span><strong><%= @stats[:transitive] %></strong> transitive</span>
+    <span><strong><%= @stats[:max_depth] %></strong> max depth</span>
+  </div>
+  <div class="gp-graph-filters">
+    <label><input type="checkbox" id="gp-show-labels" checked> Labels</label>
+    <label><input type="checkbox" id="gp-direct-only"> Direct only</label>
+    <input type="text" id="gp-search" placeholder="Search gems…" class="gp-graph-search">
+  </div>
+</div>
+
+<div id="gp-graph-container" class="gp-graph-container"></div>
+
+<div class="gp-graph-legend">
+  <span class="gp-legend-item"><span class="gp-legend-dot" style="background: var(--gp-healthy)"></span> Healthy</span>
+  <span class="gp-legend-item"><span class="gp-legend-dot" style="background: var(--gp-warning)"></span> Warning</span>
+  <span class="gp-legend-item"><span class="gp-legend-dot" style="background: var(--gp-critical)"></span> Critical</span>
+  <span class="gp-legend-item"><span class="gp-legend-dot" style="background: var(--gp-unknown)"></span> Unknown</span>
+  <span class="gp-legend-sep">|</span>
+  <span class="gp-legend-item"><span class="gp-legend-dot gp-legend-dot-ring"></span> Direct dep</span>
+  <span class="gp-legend-item"><span class="gp-legend-dot gp-legend-dot-sm"></span> Transitive dep</span>
+</div>
+
+<div id="gp-tooltip" class="gp-tooltip"></div>
+
+<script>
+(function() {
+  const graphData = <%= raw @graph_json %>;
+  const container = document.getElementById("gp-graph-container");
+  const width = container.clientWidth;
+  const height = 600;
+
+  const statusColor = {
+    healthy:  "#22c55e",
+    warning:  "#f59e0b",
+    critical: "#ef4444",
+    unknown:  "#9ca3af"
+  };
+
+  const svg = d3.select("#gp-graph-container")
+    .append("svg")
+    .attr("width", width)
+    .attr("height", height)
+    .attr("viewBox", [0, 0, width, height]);
+
+  // Zoom
+  const g = svg.append("g");
+  svg.call(d3.zoom()
+    .scaleExtent([0.1, 4])
+    .on("zoom", (event) => g.attr("transform", event.transform)));
+
+  // Arrowhead marker
+  svg.append("defs").append("marker")
+    .attr("id", "gp-arrow")
+    .attr("viewBox", "0 -3 6 6")
+    .attr("refX", 12)
+    .attr("refY", 0)
+    .attr("markerWidth", 5)
+    .attr("markerHeight", 5)
+    .attr("orient", "auto")
+    .append("path")
+    .attr("d", "M0,-3L6,0L0,3")
+    .attr("fill", "#d1d5db");
+
+  const simulation = d3.forceSimulation(graphData.nodes)
+    .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(50))
+    .force("charge", d3.forceManyBody().strength(-80))
+    .force("center", d3.forceCenter(width / 2, height / 2))
+    .force("collision", d3.forceCollide().radius(d => nodeRadius(d) + 2));
+
+  const link = g.append("g")
+    .selectAll("line")
+    .data(graphData.links)
+    .join("line")
+    .attr("stroke", "#e5e7eb")
+    .attr("stroke-width", 0.5)
+    .attr("marker-end", "url(#gp-arrow)");
+
+  function nodeRadius(d) {
+    if (d.direct) return Math.max(6, Math.min(14, 6 + d.impact * 0.5));
+    return Math.max(3, Math.min(8, 3 + d.impact * 0.3));
+  }
+
+  const node = g.append("g")
+    .selectAll("circle")
+    .data(graphData.nodes)
+    .join("circle")
+    .attr("r", d => nodeRadius(d))
+    .attr("fill", d => statusColor[d.status] || statusColor.unknown)
+    .attr("stroke", d => d.direct ? "#1f2937" : "none")
+    .attr("stroke-width", d => d.direct ? 2 : 0)
+    .attr("cursor", "pointer")
+    .call(d3.drag()
+      .on("start", dragstarted)
+      .on("drag", dragged)
+      .on("end", dragended));
+
+  const label = g.append("g")
+    .selectAll("text")
+    .data(graphData.nodes)
+    .join("text")
+    .text(d => d.id)
+    .attr("font-size", d => d.direct ? "9px" : "7px")
+    .attr("font-weight", d => d.direct ? "600" : "400")
+    .attr("fill", "#374151")
+    .attr("dx", d => nodeRadius(d) + 3)
+    .attr("dy", "0.35em")
+    .attr("pointer-events", "none");
+
+  // Tooltip
+  const tooltip = d3.select("#gp-tooltip");
+  const gemBasePath = "<%= gems_path %>/";
+
+  node.on("mouseover", (event, d) => {
+    tooltip.style("display", "block")
+      .html(
+        `<strong>${d.id}</strong> <code>${d.version}</code><br>` +
+        `Status: ${d.status} · Category: ${d.category}<br>` +
+        `Depth: ${d.depth} · Impact: ${d.impact} · Sub-deps: ${d.subtree_size}<br>` +
+        `${d.direct ? "Direct dependency" : "Transitive dependency"}`
+      );
+  })
+  .on("mousemove", (event) => {
+    tooltip.style("left", (event.pageX + 12) + "px")
+           .style("top", (event.pageY - 12) + "px");
+  })
+  .on("mouseout", () => tooltip.style("display", "none"));
+
+  // Click: highlight dependency chain
+  let highlighted = null;
+  node.on("click", (event, d) => {
+    event.stopPropagation();
+    if (highlighted === d.id) {
+      resetHighlight();
+      highlighted = null;
+      return;
+    }
+    highlighted = d.id;
+
+    // Find all connected nodes (upstream + downstream)
+    const connected = new Set([d.id]);
+    function findDown(name) {
+      graphData.links.forEach(l => {
+        const src = typeof l.source === "object" ? l.source.id : l.source;
+        const tgt = typeof l.target === "object" ? l.target.id : l.target;
+        if (src === name && !connected.has(tgt)) {
+          connected.add(tgt);
+          findDown(tgt);
+        }
+      });
+    }
+    function findUp(name) {
+      graphData.links.forEach(l => {
+        const src = typeof l.source === "object" ? l.source.id : l.source;
+        const tgt = typeof l.target === "object" ? l.target.id : l.target;
+        if (tgt === name && !connected.has(src)) {
+          connected.add(src);
+          findUp(src);
+        }
+      });
+    }
+    findDown(d.id);
+    findUp(d.id);
+
+    node.attr("opacity", n => connected.has(n.id) ? 1 : 0.08);
+    label.attr("opacity", n => connected.has(n.id) ? 1 : 0.08);
+    link.attr("opacity", l => {
+      const src = typeof l.source === "object" ? l.source.id : l.source;
+      const tgt = typeof l.target === "object" ? l.target.id : l.target;
+      return connected.has(src) && connected.has(tgt) ? 1 : 0.04;
+    });
+  });
+
+  // Click on gem to navigate to detail
+  node.on("dblclick", (event, d) => {
+    window.location.href = gemBasePath + encodeURIComponent(d.id);
+  });
+
+  svg.on("click", () => {
+    resetHighlight();
+    highlighted = null;
+  });
+
+  function resetHighlight() {
+    node.attr("opacity", 1);
+    label.attr("opacity", 1);
+    link.attr("opacity", 1);
+  }
+
+  simulation.on("tick", () => {
+    link
+      .attr("x1", d => d.source.x)
+      .attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x)
+      .attr("y2", d => d.target.y);
+    node
+      .attr("cx", d => d.x)
+      .attr("cy", d => d.y);
+    label
+      .attr("x", d => d.x)
+      .attr("y", d => d.y);
+  });
+
+  function dragstarted(event) {
+    if (!event.active) simulation.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }
+  function dragged(event) {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }
+  function dragended(event) {
+    if (!event.active) simulation.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }
+
+  // Controls
+  document.getElementById("gp-show-labels").addEventListener("change", (e) => {
+    label.attr("display", e.target.checked ? null : "none");
+  });
+
+  document.getElementById("gp-direct-only").addEventListener("change", (e) => {
+    if (e.target.checked) {
+      node.attr("display", d => d.direct ? null : "none");
+      label.attr("display", d => d.direct ? null : "none");
+      link.attr("display", l => {
+        const src = typeof l.source === "object" ? l.source : graphData.nodes.find(n => n.id === l.source);
+        return src && src.direct ? null : "none";
+      });
+    } else {
+      node.attr("display", null);
+      label.attr("display", document.getElementById("gp-show-labels").checked ? null : "none");
+      link.attr("display", null);
+    }
+  });
+
+  document.getElementById("gp-search").addEventListener("input", (e) => {
+    const query = e.target.value.toLowerCase();
+    if (!query) {
+      resetHighlight();
+      return;
+    }
+    const matches = new Set(graphData.nodes.filter(n => n.id.includes(query)).map(n => n.id));
+    node.attr("opacity", n => matches.has(n.id) ? 1 : 0.08);
+    label.attr("opacity", n => matches.has(n.id) ? 1 : 0.08);
+    link.attr("opacity", 0.04);
+  });
+})();
+</script>

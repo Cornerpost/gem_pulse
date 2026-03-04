@@ -16,9 +16,9 @@ class DashboardTest < ActionDispatch::IntegrationTest
     assert_select "h1", GemPulse.configuration.title
   end
 
-  test "renders four summary cards" do
+  test "renders summary cards" do
     get gem_pulse.root_path
-    assert_select ".gp-summary-cards .gp-card", 4
+    assert_select ".gp-summary-cards .gp-card", minimum: 4
   end
 
   test "summary cards contain labels" do
@@ -27,6 +27,20 @@ class DashboardTest < ActionDispatch::IntegrationTest
     assert_select ".gp-card-label", text: "With CVEs"
     assert_select ".gp-card-label", text: "Outdated"
     assert_select ".gp-card-label", text: "Aggregate Score"
+  end
+
+  test "dependency structure cards are present" do
+    get gem_pulse.root_path
+    assert_select ".gp-card-label", text: "Direct Deps"
+    assert_select ".gp-card-label", text: "Transitive"
+    assert_select ".gp-card-label", text: "Max Depth"
+  end
+
+  test "category breakdown is present" do
+    get gem_pulse.root_path
+    assert_select "h2", "Gem Categories"
+    assert_select ".gp-category-bars"
+    assert_select ".gp-category-row", minimum: 1
   end
 
   test "total gems card shows a number" do

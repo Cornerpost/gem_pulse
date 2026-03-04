@@ -3,6 +3,8 @@ module GemPulse
     def index
       @gems = load_gem_health
       @summary = compute_summary(@gems)
+      @graph_stats = dependency_graph.stats
+      @category_summary = gem_categorizer(@gems).summary
     end
 
     private

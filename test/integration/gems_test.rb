@@ -17,7 +17,7 @@ class GemsTest < ActionDispatch::IntegrationTest
   test "gems index contains gem names from lockfile" do
     get gem_pulse.gems_path
     gem_name = @inspector.gems.find { |g| g.source == :rubygems }&.name
-    assert_select "table.gp-table tbody td a", text: gem_name if gem_name
+    assert_select "table.gp-table tbody td a.gp-gem-link", text: gem_name if gem_name
   end
 
   test "gems index renders filter links" do
@@ -30,6 +30,17 @@ class GemsTest < ActionDispatch::IntegrationTest
     assert_select ".gp-filter", text: "Unknown"
   end
 
+  test "gems index has legend strip" do
+    get gem_pulse.gems_path
+    assert_select ".gp-legend-strip"
+    assert_select ".gp-legend-strip-label", minimum: 3
+  end
+
+  test "gems index has column tooltips" do
+    get gem_pulse.gems_path
+    assert_select "table.gp-table thead .gp-tip", minimum: 5
+  end
+
   test "gems index renders sortable column headers" do
     get gem_pulse.gems_path
     assert_select "table.gp-table thead th", minimum: 5
@@ -38,14 +49,14 @@ class GemsTest < ActionDispatch::IntegrationTest
   test "sort by name ascending" do
     get gem_pulse.gems_path(sort: "name", direction: "asc")
     assert_response :success
-    names = css_select("table.gp-table tbody td a").map(&:text)
+    names = css_select("table.gp-table tbody td a.gp-gem-link").map(&:text)
     assert_equal names, names.sort
   end
 
   test "sort by name descending" do
     get gem_pulse.gems_path(sort: "name", direction: "desc")
     assert_response :success
-    names = css_select("table.gp-table tbody td a").map(&:text)
+    names = css_select("table.gp-table tbody td a.gp-gem-link").map(&:text)
     assert_equal names, names.sort.reverse
   end
 
@@ -118,5 +129,43 @@ class GemsTest < ActionDispatch::IntegrationTest
     gem_entry = @inspector.gems.first
     get gem_pulse.gem_path(gem_entry.name)
     assert_includes response.body, gem_entry.locked_version
+  end
+
+  test "show page has category badge" do
+    gem_name = @inspector.gems.first.name
+    get gem_pulse.gem_path(gem_name)
+    assert_select ".gp-badge-category"
+  end
+
+  test "show page has direct or transitive badge" do
+    gem_name = @inspector.gems.first.name
+    get gem_pulse.gem_path(gem_name)
+    assert_select ".gp-badge-direct, .gp-badge-transitive"
+  end
+
+  test "show page has dependency stats" do
+    gem_name = @inspector.gems.first.name
+    get gem_pulse.gem_path(gem_name)
+    assert_select ".gp-dep-stats"
+    assert_select ".gp-dep-stat-label", text: /Depth/
+    assert_select ".gp-dep-stat-label", text: /Impact/
+  end
+
+  test "gems index shows category column" do
+    get gem_pulse.gems_path
+    assert_select "table.gp-table thead th", text: "Category"
+    assert_select ".gp-category-tag", minimum: 1
+  end
+
+  test "gems index shows type column" do
+    get gem_pulse.gems_path
+    assert_select "table.gp-table thead th", text: "Type"
+    assert_select ".gp-type-dot", minimum: 1
+  end
+
+  test "filter by category" do
+    get gem_pulse.gems_path(category: "Web Framework")
+    assert_response :success
+    assert_select ".gp-active-filter", text: /Web Framework/
   end
 end

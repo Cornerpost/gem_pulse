@@ -2,7 +2,10 @@ module GemPulse
   class GemsController < ApplicationController
     def index
       @gems = load_gem_health
+      @categorizer = gem_categorizer(@gems)
+      @graph = dependency_graph
       @gems = filter_gems(@gems, params[:status])
+      @gems = filter_by_category(@gems, params[:category])
       @gems = sort_gems(@gems, params[:sort], params[:direction])
     end
 
@@ -17,6 +20,17 @@ module GemPulse
       end
 
       @versions = @gem[:rubygems_data]&.dig(:versions)&.first(10) || []
+
+      # Dependency intelligence
+      @graph = dependency_graph
+      @category = gem_categorizer(all_gems).categorize(@gem_name)
+      @is_direct = @graph.direct?(@gem_name)
+      @dep_trace = @graph.trace(@gem_name)
+      @dependents = @graph.dependents(@gem_name)
+      @sub_deps = @graph.dependencies(@gem_name)
+      @impact = @graph.impact(@gem_name)
+      @subtree_size = @graph.subtree_size(@gem_name)
+      @depth = @graph.depth(@gem_name)
     end
 
     private
@@ -45,6 +59,12 @@ module GemPulse
         valid_statuses = %w[critical warning healthy unknown]
         return gems unless valid_statuses.include?(status)
         gems.select { |g| g[:status] == status }
+      end
+
+      def filter_by_category(gems, category)
+        return gems if category.blank?
+        categorizer = gem_categorizer(gems)
+        gems.select { |g| categorizer.categorize(g[:name]) == category }
       end
   end
 end

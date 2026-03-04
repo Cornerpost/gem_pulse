@@ -9,7 +9,71 @@
       → <%= @gem[:latest_version] %>
     <% end %>
   </span>
+  <span class="gp-badge gp-badge-category"><%= @category %></span>
+  <% if @is_direct %>
+    <span class="gp-badge gp-badge-direct">direct</span>
+  <% else %>
+    <span class="gp-badge gp-badge-transitive">transitive</span>
+  <% end %>
 </div>
+
+<%# ── Dependency chain (trace) ── %>
+<% unless @is_direct %>
+  <h2>Why is this gem here?</h2>
+  <div class="gp-traces">
+    <% @dep_trace.first(5).each do |path| %>
+      <div class="gp-trace">
+        <% path.each_with_index do |gem_name, i| %>
+          <% if i > 0 %><span class="gp-trace-arrow">→</span><% end %>
+          <% if gem_name == @gem_name %>
+            <strong><%= gem_name %></strong>
+          <% else %>
+            <%= link_to gem_name, gem_path(gem_name) %>
+          <% end %>
+        <% end %>
+      </div>
+    <% end %>
+    <% if @dep_trace.size > 5 %>
+      <p class="gp-text-muted">… and <%= @dep_trace.size - 5 %> more paths</p>
+    <% end %>
+  </div>
+<% end %>
+
+<%# ── Dependency stats ── %>
+<div class="gp-dep-stats">
+  <div class="gp-dep-stat">
+    <span class="gp-dep-stat-value"><%= @depth || "—" %></span>
+    <span class="gp-dep-stat-label">Depth</span>
+  </div>
+  <div class="gp-dep-stat">
+    <span class="gp-dep-stat-value"><%= @impact %></span>
+    <span class="gp-dep-stat-label">Impact <span class="gp-text-muted-sm">(gems affected)</span></span>
+  </div>
+  <div class="gp-dep-stat">
+    <span class="gp-dep-stat-value"><%= @subtree_size %></span>
+    <span class="gp-dep-stat-label">Sub-deps</span>
+  </div>
+</div>
+
+<%# ── Dependents (what depends on this) ── %>
+<% if @dependents.any? %>
+  <h2>Depended on by (<%= @dependents.size %>)</h2>
+  <div class="gp-dep-list">
+    <% @dependents.sort.each do |dep_name| %>
+      <%= link_to dep_name, gem_path(dep_name), class: "gp-dep-chip" %>
+    <% end %>
+  </div>
+<% end %>
+
+<%# ── Sub-dependencies (what this depends on) ── %>
+<% if @sub_deps.any? %>
+  <h2>Depends on (<%= @sub_deps.size %>)</h2>
+  <div class="gp-dep-list">
+    <% @sub_deps.sort.each do |dep_name| %>
+      <%= link_to dep_name, gem_path(dep_name), class: "gp-dep-chip" %>
+    <% end %>
+  </div>
+<% end %>
 
 <h2>Score Breakdown</h2>
 <ul class="gp-reasons">

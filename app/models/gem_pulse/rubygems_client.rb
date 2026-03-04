@@ -6,7 +6,7 @@ module GemPulse
     BASE_URL = "https://rubygems.org"
 
     def info(gem_name)
-      Rails.cache.fetch(cache_key(gem_name), expires_in: cache_ttl) do
+      Rails.cache.fetch(cache_key(gem_name), expires_in: cache_ttl, skip_nil: true) do
         fetch_gem_info(gem_name)
       end
     end

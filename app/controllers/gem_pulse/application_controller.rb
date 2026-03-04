@@ -62,5 +62,14 @@ module GemPulse
           }
         end
       end
+
+      def dependency_graph
+        @dependency_graph ||= DependencyGraph.new(app_root: gemfile_root)
+      end
+
+      def gem_categorizer(gems)
+        groups = gems.each_with_object({}) { |g, h| h[g[:name]] = g[:groups] }
+        GemCategorizer.new(gem_names: gems.map { |g| g[:name] }, groups: groups)
+      end
   end
 end

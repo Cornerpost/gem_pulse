@@ -19,6 +19,45 @@
   </div>
 </div>
 
+<%# ── Dependency graph stats ── %>
+<h2>Dependency Structure</h2>
+<div class="gp-summary-cards">
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @graph_stats[:direct] %></span>
+    <span class="gp-card-label">Direct Deps</span>
+  </div>
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @graph_stats[:transitive] %></span>
+    <span class="gp-card-label">Transitive</span>
+  </div>
+  <div class="gp-card">
+    <span class="gp-card-value"><%= @graph_stats[:max_depth] %></span>
+    <span class="gp-card-label">Max Depth</span>
+  </div>
+  <div class="gp-card gp-card-detail">
+    <span class="gp-card-value-sm"><%= @graph_stats[:heaviest_name] %></span>
+    <span class="gp-card-label">Heaviest <span class="gp-card-detail-num">(<%= @graph_stats[:heaviest_count] %> transitive deps)</span></span>
+  </div>
+</div>
+
+<p class="gp-graph-link"><%= link_to "View interactive dependency graph →", graph_path %></p>
+
+<%# ── Category breakdown ── %>
+<h2>Gem Categories</h2>
+<div class="gp-category-bars">
+  <% max_count = @category_summary.values.max || 1 %>
+  <% @category_summary.each do |category, count| %>
+    <div class="gp-category-row">
+      <span class="gp-category-label"><%= link_to category, gems_path(category: category) %></span>
+      <div class="gp-category-bar-track">
+        <div class="gp-category-bar-fill" style="width: <%= (count.to_f / max_count * 100).round %>%"></div>
+      </div>
+      <span class="gp-category-count"><%= count %></span>
+    </div>
+  <% end %>
+</div>
+
+<%# ── Needs attention ── %>
 <h2>Needs Attention</h2>
 <table class="gp-table">
   <thead>

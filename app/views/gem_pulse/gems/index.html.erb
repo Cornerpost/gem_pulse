@@ -1,31 +1,75 @@
 <h1>All Gems</h1>
 
 <div class="gp-filters">
-  <%= link_to "All", gems_path, class: "gp-filter #{'gp-filter-active' if params[:status].blank?}" %>
+  <%= link_to "All", gems_path, class: "gp-filter #{'gp-filter-active' if params[:status].blank? && params[:category].blank?}" %>
   <%= link_to "Critical", gems_path(status: "critical"), class: "gp-filter #{'gp-filter-active' if params[:status] == 'critical'}" %>
   <%= link_to "Warning", gems_path(status: "warning"), class: "gp-filter #{'gp-filter-active' if params[:status] == 'warning'}" %>
   <%= link_to "Healthy", gems_path(status: "healthy"), class: "gp-filter #{'gp-filter-active' if params[:status] == 'healthy'}" %>
   <%= link_to "Unknown", gems_path(status: "unknown"), class: "gp-filter #{'gp-filter-active' if params[:status] == 'unknown'}" %>
 </div>
 
+<% if params[:category].present? %>
+  <div class="gp-active-filter">
+    Category: <strong><%= params[:category] %></strong>
+    <%= link_to "×", gems_path(status: params[:status], sort: params[:sort], direction: params[:direction]), class: "gp-filter-clear" %>
+  </div>
+<% end %>
+
+<div class="gp-legend-strip">
+  <span class="gp-legend-strip-group">
+    <span class="gp-legend-strip-label">Status</span>
+    <span class="gp-legend-strip-item"><span class="gp-legend-strip-dot" style="background: var(--gp-healthy)"></span> Healthy</span>
+    <span class="gp-legend-strip-item"><span class="gp-legend-strip-dot" style="background: var(--gp-warning)"></span> Warning</span>
+    <span class="gp-legend-strip-item"><span class="gp-legend-strip-dot" style="background: var(--gp-critical)"></span> Critical</span>
+    <span class="gp-legend-strip-item"><span class="gp-legend-strip-dot" style="background: var(--gp-unknown)"></span> Unknown</span>
+  </span>
+  <span class="gp-legend-strip-divider"></span>
+  <span class="gp-legend-strip-group">
+    <span class="gp-legend-strip-label">Type</span>
+    <span class="gp-legend-strip-item"><span class="gp-type-dot gp-type-direct" style="width:14px;height:14px;font-size:0.55rem">D</span> Direct</span>
+    <span class="gp-legend-strip-item"><span class="gp-type-dot gp-type-transitive" style="width:14px;height:14px;font-size:0.55rem">T</span> Transitive</span>
+  </span>
+  <span class="gp-legend-strip-divider"></span>
+  <span class="gp-legend-strip-group">
+    <span class="gp-legend-strip-label">Score</span>
+    <span class="gp-legend-strip-item"><span class="gp-score-cell gp-score-high">70+</span> Good</span>
+    <span class="gp-legend-strip-item"><span class="gp-score-cell gp-score-mid">40–69</span> Fair</span>
+    <span class="gp-legend-strip-item"><span class="gp-score-cell gp-score-low">&lt;40</span> Poor</span>
+  </span>
+</div>
+
 <table class="gp-table">
   <thead>
     <tr>
-      <th><%= gp_sort_link("name", "Gem") %></th>
-      <th><%= gp_sort_link("locked_version", "Locked") %></th>
-      <th><%= gp_sort_link("latest_version", "Latest") %></th>
-      <th><%= gp_sort_link("status", "Status") %></th>
-      <th><%= gp_sort_link("score", "Score") %></th>
+      <th><%= gp_tip_sort_link("name", "Gem", "Package name from your Gemfile.lock") %></th>
+      <th><span class="gp-tip" data-tip="Functional group — click a tag to filter by category">Category</span></th>
+      <th class="gp-col-center"><span class="gp-tip" data-tip="Direct (D) = in your Gemfile. Transitive (T) = pulled in by another gem.">Type</span></th>
+      <th><%= gp_tip_sort_link("locked_version", "Locked", "Version currently installed via Gemfile.lock") %></th>
+      <th><%= gp_tip_sort_link("latest_version", "Latest", "Most recent version on RubyGems.org") %></th>
+      <th><%= gp_tip_sort_link("status", "Status", "Health assessment based on version gap, CVEs, and activity") %></th>
+      <th><%= gp_tip_sort_link("score", "Score", "0–100 composite score: higher is healthier") %></th>
     </tr>
   </thead>
   <tbody>
     <% @gems.each do |gem| %>
       <tr>
-        <td><%= link_to gem[:name], gem_path(gem[:name]) %></td>
+        <td><%= link_to gem[:name], gem_path(gem[:name]), class: "gp-gem-link" %></td>
+        <td>
+          <%= link_to gems_path(category: @categorizer.categorize(gem[:name]), sort: params[:sort], direction: params[:direction], status: params[:status]), class: "gp-category-tag" do %>
+            <%= @categorizer.categorize(gem[:name]) %>
+          <% end %>
+        </td>
+        <td class="gp-col-center">
+          <% if @graph.direct?(gem[:name]) %>
+            <span class="gp-type-dot gp-type-direct" title="Direct dependency">D</span>
+          <% else %>
+            <span class="gp-type-dot gp-type-transitive" title="Transitive dependency">T</span>
+          <% end %>
+        </td>
         <td><code><%= gem[:locked_version] %></code></td>
-        <td><code><%= gem[:latest_version] || "—" %></code></td>
+        <td><code class="<%= gp_version_class(gem[:locked_version], gem[:latest_version]) %>"><%= gem[:latest_version] || "—" %></code></td>
         <td><span class="gp-badge gp-badge-<%= gem[:status] %>"><%= gem[:status] %></span></td>
-        <td><%= gem[:score] || "—" %></td>
+        <td><span class="gp-score-cell <%= gp_score_class(gem[:score]) %>"><%= gem[:score] || "—" %></span></td>
       </tr>
     <% end %>
   </tbody>
